@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nicolás Maduro: Interactive Timeline</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            color: #1a1a1a;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            color: #666;
+            font-style: italic;
+        }
+
+        .timeline-container {
+            width: 100%;
+            max-width: 1400px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .info-panel {
+            background: #1a1a1a;
+            color: white;
+            padding: 20px 30px;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .info-panel .default-text {
+            text-align: center;
+            color: #888;
+            font-size: 1rem;
+        }
+
+        .info-panel .event-info {
+            display: none;
+        }
+
+        .info-panel .event-info.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .info-panel .year-badge {
+            display: inline-block;
+            background: #c41e3a;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .info-panel h3 {
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+            color: #fff;
+            border-bottom: 2px solid #c41e3a;
+            padding-bottom: 6px;
+            display: inline-block;
+        }
+
+        .info-panel p {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: #ddd;
+        }
+
+        .timeline-scroll {
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 60px 40px;
+        }
+
+        .timeline-wrapper {
+            display: flex;
+            align-items: center;
+            min-width: 1800px;
+            position: relative;
+            padding: 0 60px;
+        }
+
+        .timeline-line {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: #c41e3a;
+            transform: translateY(-50%);
+            z-index: 1;
+        }
+
+        .event {
+            position: relative;
+            flex: 0 0 auto;
+            width: 140px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            z-index: 2;
+            margin: 0 10px;
+            background: none;
+            border: none;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .event:nth-child(odd) {
+            margin-top: -80px;
+        }
+
+        .event:nth-child(even) {
+            margin-top: 80px;
+        }
+
+        .event-dot {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            position: relative;
+            z-index: 3;
+            transition: transform 0.3s, box-shadow 0.3s;
+            pointer-events: none;
+        }
+
+        .event:hover .event-dot {
+            transform: scale(1.5);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+
+        .event.active .event-dot {
+            transform: scale(1.5);
+            box-shadow: 0 0 0 4px rgba(196, 30, 58, 0.3);
+        }
+
+        .event.birth .event-dot { background: #2c5f2d; }
+        .event.political .event-dot { background: #1e3a5f; }
+        .event.election .event-dot { background: #8b4513; }
+        .event.legal .event-dot { background: #800020; }
+        .event.military .event-dot { background: #c41e3a; }
+        .event.diplomatic .event-dot { background: #4a6741; }
+
+        .event-date {
+            margin-top: 12px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #333;
+            text-align: center;
+            line-height: 1.3;
+            background: rgba(255,255,255,0.95);
+            padding: 4px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            pointer-events: none;
+        }
+
+        .event:nth-child(even) .event-date {
+            margin-top: 0;
+            margin-bottom: 12px;
+            order: -1;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding: 20px;
+            background: #fafafa;
+            border-top: 1px solid #eee;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #555;
+        }
+
+        .legend-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        .scroll-hint {
+            text-align: center;
+            color: #999;
+            font-size: 0.85rem;
+            padding: 10px;
+            background: #fafafa;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.8rem; }
+            .timeline-wrapper { min-width: 1500px; }
+            .event { width: 120px; }
+            .timeline-scroll { padding: 50px 20px; }
+            .info-panel { padding: 15px 20px; min-height: 100px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🇻🇪 NICOLÁS MADURO: A TIMELINE</h1>
+        <p>From Rise to Capture — Click any date to see details</p>
+    </div>
+
+    <div class="timeline-container">
+        <div class="info-panel" id="infoPanel">
+            <div class="default-text">👆 Click on any event dot above to see details</div>
+
+            <div class="event-info" data-event="0">
+                <span class="year-badge">1962</span>
+                <h3>BIRTH</h3>
+                <p>Nicolás Maduro Moros born in Caracas, Venezuela. Son of a union leader and a teacher.</p>
+            </div>
+
+            <div class="event-info" data-event="1">
+                <span class="year-badge">1998</span>
+                <h3>ENTERING POLITICS</h3>
+                <p>Elected to the Venezuelan Chamber of Deputies as a member of the Fifth Republic Movement (MVR).</p>
+            </div>
+
+            <div class="event-info" data-event="2">
+                <span class="year-badge">2005</span>
+                <h3>NATIONAL ASSEMBLY SPEAKER</h3>
+                <p>Became Speaker (President) of the National Assembly, consolidating his position in the Chávez government.</p>
+            </div>
+
+            <div class="event-info" data-event="3">
+                <span class="year-badge">2006</span>
+                <h3>FOREIGN MINISTER</h3>
+                <p>Appointed Minister of Foreign Affairs by Hugo Chávez. Served for 6 years, building international alliances.</p>
+            </div>
+
+            <div class="event-info" data-event="4">
+                <span class="year-badge">2012</span>
+                <h3>VICE PRESIDENT</h3>
+                <p>Appointed Vice President by Chávez after winning re-election. Became Chávez's designated successor.</p>
+            </div>
+
+            <div class="event-info" data-event="5">
+                <span class="year-badge">2013</span>
+                <h3>CHÁVEZ DIES</h3>
+                <p>Hugo Chávez dies after a two-year battle with cancer. Maduro becomes acting president.</p>
+            </div>
+
+            <div class="event-info" data-event="6">
+                <span class="year-badge">2013</span>
+                <h3>WINS PRESIDENCY</h3>
+                <p>Wins special election to complete Chávez's term with 50.6% of the vote. Narrow margin over Henrique Capriles.</p>
+            </div>
+
+            <div class="event-info" data-event="7">
+                <span class="year-badge">2018</span>
+                <h3>RE-ELECTED (DISPUTED)</h3>
+                <p>Wins second term in election boycotted by opposition. US, EU, and OAS reject results as illegitimate.</p>
+            </div>
+
+            <div class="event-info" data-event="8">
+                <span class="year-badge">2020</span>
+                <h3>2020 INDICTMENT</h3>
+                <p>Trump DOJ charges Maduro with narco-terrorism, cocaine importation, and leading "Cartel de los Soles." $15M bounty offered.</p>
+            </div>
+
+            <div class="event-info" data-event="9">
+                <span class="year-badge">2024</span>
+                <h3>2024 ELECTION FRAUD</h3>
+                <p>Claims victory with 51.2% but opposition candidate Edmundo González likely won. Carter Center and US reject results.</p>
+            </div>
+
+            <div class="event-info" data-event="10">
+                <span class="year-badge">2026</span>
+                <h3>OPERATION ABSOLUTE RESOLVE</h3>
+                <p>US military surprise attack begins 2 a.m. in Caracas. Bombs suppress air defenses. Maduro and wife Cilia Flores captured after 2h 28m war.</p>
+            </div>
+
+            <div class="event-info" data-event="11">
+                <span class="year-badge">2026</span>
+                <h3>FIRST HEARING</h3>
+                <p>Maduro and Flores arraigned in Lower Manhattan federal courthouse. Both plead not guilty to all charges including narco-terrorism.</p>
+            </div>
+
+            <div class="event-info" data-event="12">
+                <span class="year-badge">2026</span>
+                <h3>DIPLOMATIC TIES RESTORED</h3>
+                <p>After 7 years of broken relations, US and Venezuela reestablish diplomatic and consular ties. 659 political prisoners released.</p>
+            </div>
+        </div>
+
+        <div class="timeline-scroll">
+            <div class="timeline-wrapper">
+                <div class="timeline-line"></div>
+
+                <button class="event birth" onclick="showEvent(0)">
+                    <div class="event-dot"></div>
+                    <div class="event-date">Nov 23, 1962</div>
+                </button>
+
+                <button class="event political" onclick="showEvent(1)">
+                    <div class="event-dot"></div>
+                    <div class="event-date">Dec 6, 1998</div>
+                </button>
+
+                <button class="event political" onclick="showEvent(2)">
+                    <div class="event-dot"></div>
+                    <div class="event-date">Jan 5, 2005</div>
+                </button>
+
+                <button class="event political" onclick="showEvent(3)">
+                    <div class="event-dot"></div>
+                    <div class="event-date">Aug 9, 2006</div>
+                </button>
+
+                <button class="event political" onclick="showEvent(4)">
+                    <div class="event-dot"></div>
+                    <div class="event-date">Oct 7, 2012</div>
+                </button>
+
+                <button class="event political" onclick="showEvent(5)">
+                    <div class="event-dot"></div>
+                    <div class="event-date">Mar 5, 2013</div>
+                </button>
+
+                <button class="event election" onclick="showEvent(6)">
+                    <div class="event-dot"></div>
+                    <div class="event-date">Apr 14, 2013</div>
+                </button>
+
+                <button class="event election" onclick="showEvent(7)">
+                    <div class="event-dot"></div>
+                    <div class="event-date">May 20, 2018</div>
+                </button>
+
+                <button class="event legal" onclick="showEvent(8)">
+                    <div class="event-dot"></div>
+                    <div class="event-date">Mar 26, 2020</div>
+                </button>
+
+                <button class="event election" onclick="showEvent(9)">
+                    <div class="event-dot"></div>
+                    <div class="event-date">Jul 28, 2024</div>
+                </button>
+
+                <button class="event military" onclick="showEvent(10)">
+                    <div class="event-dot"></div>
+                    <div class="event-date">Jan 3, 2026</div>
+                </button>
+
+                <button class="event legal" onclick="showEvent(11)">
+                    <div class="event-dot"></div>
+                    <div class="event-date">Jan 5, 2026</div>
+                </button>
+
+                <button class="event diplomatic" onclick="showEvent(12)">
+                    <div class="event-dot"></div>
+                    <div class="event-date">Mar 5, 2026</div>
+                </button>
+            </div>
+        </div>
+
+        <p class="scroll-hint">← Scroll horizontally to explore the full timeline →</p>
+
+        <div class="legend">
+            <div class="legend-item"><div class="legend-dot" style="background:#2c5f2d"></div>Birth/Biography</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#1e3a5f"></div>Political Career</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#8b4513"></div>Elections</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#800020"></div>Legal Actions</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#c41e3a"></div>Military Action</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#4a6741"></div>Diplomatic</div>
+        </div>
+    </div>
+
+    <script>
+        let currentEvent = -1;
+
+        function showEvent(index) {
+            const panel = document.getElementById('infoPanel');
+            const defaultText = panel.querySelector('.default-text');
+            const allInfos = panel.querySelectorAll('.event-info');
+            const allEvents = document.querySelectorAll('.event');
+
+            allEvents.forEach(e => e.classList.remove('active'));
+            allInfos.forEach(info => info.classList.remove('active'));
+
+            if (currentEvent === index) {
+                defaultText.style.display = 'block';
+                currentEvent = -1;
+            } else {
+                defaultText.style.display = 'none';
+                allInfos[index].classList.add('active');
+                allEvents[index].classList.add('active');
+                currentEvent = index;
+            }
+        }
+    </script>
+</body>
+</html>
